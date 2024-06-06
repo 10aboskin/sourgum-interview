@@ -7,5 +7,8 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: "jsdom",
+    coverage: {
+      exclude: ["./**", "./src/main.tsx"],
+    },
   },
 });

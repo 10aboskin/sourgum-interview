@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 
-import QueryClientWrapper from "../../__test__/query-client-wrapper";
-import exchangeRates from "../../__test__/exchange-rates.json";
+import QueryClientWrapper from "../../../tests/query-client-wrapper";
+import exchangeRates from "../../../tests/exchange-rates.json";
 import nockClient from "../../nock-client";
 import { renderHook } from "@testing-library/react";
 import { useUsdExchangeRates } from "./exchange-rates.queries";

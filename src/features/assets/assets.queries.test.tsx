@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 
-import QueryClientWrapper from "../../__test__/query-client-wrapper";
-import assets from "../../__test__/assets.json";
+import QueryClientWrapper from "../../../tests/query-client-wrapper";
+import assets from "../../../tests/assets.json";
 import { assetsPath } from "./assets.api";
 import nockClient from "../../nock-client";
 import { renderHook } from "@testing-library/react";

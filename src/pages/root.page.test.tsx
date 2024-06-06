@@ -1,15 +1,25 @@
-import { afterEach, describe, expect, it } from "vitest";
-import { cleanup, render } from "@testing-library/react";
+import {
+  MemoryRouter,
+  RouterProvider,
+  createMemoryRouter,
+} from "react-router-dom";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { cleanup, render, waitFor } from "@testing-library/react";
 
-import ExchangeRateList from "./exchange-rate-list.component";
-import QueryClientWrapper from "../../__test__/query-client-wrapper";
-import exchangeRates from "../../__test__/exchange-rates.json";
-import { exchangeRatesPath } from "./exchange-rates.api";
-import nockClient from "../../nock-client";
+import QueryClientWrapper from "../../tests/query-client-wrapper";
+import Root from "./root.page";
+import exchangeRates from "../../tests/exchange-rates.json";
+import { exchangeRatesPath } from "../features/exchange-rates/exchange-rates.api";
+import nockClient from "../nock-client";
+import { routes } from "../router";
 import userEvent from "@testing-library/user-event";
 
 const assetNames = exchangeRates.rates.map((item) => item.asset_id_quote);
 const assetRates = exchangeRates.rates.map((item) => item.rate);
+
+const router = createMemoryRouter(routes, {
+  initialEntries: ["/"],
+});
 
 const setup = async () => {
   nockClient
@@ -18,22 +28,27 @@ const setup = async () => {
     .get(exchangeRatesPath)
     .reply(200, exchangeRates);
 
-  const utils = render(<ExchangeRateList />, {
-    wrapper: QueryClientWrapper,
+  const utils = render(<Root />, {
+    wrapper: () => (
+      <QueryClientWrapper>
+        <RouterProvider router={router} />
+      </QueryClientWrapper>
+    ),
   });
 
   return utils;
 };
 
-describe("ExchangeRateList", () => {
+describe("Root", () => {
   afterEach(() => {
+    vi.clearAllMocks();
     cleanup();
   });
 
   it("fetches and displays asset exchange rates with USD", async () => {
     const { findAllByRole } = await setup();
 
-    const listItems = await findAllByRole("listitem");
+    const listItems = await findAllByRole("link");
 
     expect(listItems.length).toEqual(exchangeRates.rates.length);
 
@@ -60,7 +75,7 @@ describe("ExchangeRateList", () => {
       names: string[];
       rates: number[];
     }) => {
-      const listItems = await findAllByRole("listitem");
+      const listItems = await findAllByRole("link");
       const listItemNames = listItems.map(
         (item) => item.firstChild?.textContent
       );
@@ -101,5 +116,19 @@ describe("ExchangeRateList", () => {
     await user.clear(searchInput);
     // expect to see all items
     testListItems({ names: assetNames, rates: assetRates });
+  });
+
+  it("displays asset details when a list item is clicked", async () => {
+    const user = userEvent.setup();
+    const { findAllByRole, findByRole, queryByRole } = await setup();
+    // expect details to be hidden by default
+    expect(queryByRole("presentation")).toBeNull();
+    // click first list item
+    const [firstLink] = await findAllByRole("link");
+    await user.click(firstLink);
+
+    // expect asset details to be visible
+    const pre = await findByRole("presentation");
+    expect(pre.textContent).toContain("BTC");
   });
 });
