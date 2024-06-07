@@ -18,6 +18,14 @@ const router = createMemoryRouter(routes, {
   initialEntries: ["/"],
 });
 
+const getListPrices = (listItems: HTMLElement[]) => {
+  return listItems.map((item) =>
+    item.lastChild?.textContent
+      ? +item.lastChild.textContent.split(" ")[1]
+      : item.lastChild,
+  );
+};
+
 describe("Root Page", () => {
   beforeEach(() => {
     vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(
@@ -31,7 +39,7 @@ describe("Root Page", () => {
         x: 0,
         y: 0,
         toJSON: () => {},
-      })
+      }),
     );
   });
 
@@ -63,10 +71,9 @@ describe("Root Page", () => {
     const listItemNames = listItems.map((item) => item.firstChild?.textContent);
     expect(listItemNames).toEqual(["00", "1000SATS"]);
 
-    const listItemPrices = listItems.map((item) =>
-      item.lastChild?.textContent ? +item.lastChild.textContent : item.lastChild
-    );
-    expect(listItemPrices).toEqual([13.31439053707501, 3072.441676916485]);
+    const listItemPrices = getListPrices(listItems);
+
+    expect(listItemPrices).toEqual([13.314, 3072.4]);
   });
 
   it("filters the list based on the search input", async () => {
@@ -98,22 +105,18 @@ describe("Root Page", () => {
       const listItems = await findAllByRole("link");
 
       const listItemNames = listItems.map(
-        (item) => item.firstChild?.textContent
+        (item) => item.firstChild?.textContent,
       );
       expect(listItemNames).toEqual(names);
 
-      const listItemPrices = listItems.map((item) =>
-        item.lastChild?.textContent
-          ? +item.lastChild.textContent
-          : item.lastChild
-      );
+      const listItemPrices = getListPrices(listItems);
       expect(listItemPrices).toEqual(rates);
     };
 
     // expect to see only visible virtualized rows
     testListItems({
       names: ["00", "1000SATS"],
-      rates: [13.31439053707501, 3072.441676916485],
+      rates: [13.314, 3072.4],
     });
 
     // change search value
@@ -123,7 +126,7 @@ describe("Root Page", () => {
     // expect to see matching list values
     testListItems({
       names: ["00"],
-      rates: [13.31439053707501],
+      rates: [13.314],
     });
 
     // change search
@@ -132,7 +135,7 @@ describe("Root Page", () => {
     // expect to see correct filtered values
     testListItems({
       names: ["00", "1000SATS"],
-      rates: [13.31439053707501, 3072.441676916485],
+      rates: [13.314, 3072.4],
     });
 
     //  clear search value
@@ -140,13 +143,13 @@ describe("Root Page", () => {
     // expect to see only visible virtualized rows
     testListItems({
       names: ["00", "1000SATS"],
-      rates: [13.31439053707501, 3072.441676916485],
+      rates: [13.314, 3072.4],
     });
   });
 
   it("displays asset details when a list item is clicked", async () => {
     const user = userEvent.setup();
-    const { findAllByRole, findByRole, queryByRole } = render(<Root />, {
+    const { findAllByRole, findByTestId, queryByTestId } = render(<Root />, {
       wrapper: () => (
         <QueryClientWrapper>
           <RouterProvider router={router} />
@@ -162,16 +165,16 @@ describe("Root Page", () => {
       .options(`${assetsPath}/00`)
       .reply(200)
       .get(`${assetsPath}/00`)
-      .reply(200, asset1);
+      .reply(200, [asset1]);
 
     // expect details to be hidden by default
-    expect(queryByRole("presentation")).toBeNull();
+    expect(queryByTestId("asset-details")).toBeNull();
     // click first list item
     const [firstLink] = await findAllByRole("link");
     await user.click(firstLink);
 
     // expect asset details to be visible
-    const pre = await findByRole("presentation");
+    const pre = await findByTestId("asset-details");
     expect(pre.textContent).toContain("BTC");
   });
 
@@ -196,27 +199,24 @@ describe("Root Page", () => {
       .reply(200, exchangeRatesBtc);
 
     let listItems = await findAllByRole("link");
-    const listItemPrices = listItems.map((item) =>
-      item.lastChild?.textContent ? +item.lastChild.textContent : item.lastChild
-    );
+    const listItemPrices = getListPrices(listItems);
 
     const select = await findByRole("combobox", {
       name: "base-asset-select",
     });
+
     // expect default select value to be 'USD'
     const usdOption = (await findByRole("option", {
       name: "USD",
     })) as HTMLOptionElement;
-
     expect(usdOption.selected).toBe(true);
+
     // select a different asset
     await user.selectOptions(select, ["1INCH"]);
+
     // expect updated values
     listItems = await findAllByRole("link");
-    const newPrices = listItems.map((item) =>
-      item.lastChild?.textContent ? +item.lastChild.textContent : item.lastChild
-    );
-
+    const newPrices = getListPrices(listItems);
     expect(newPrices).not.toEqual(listItemPrices);
   });
 });

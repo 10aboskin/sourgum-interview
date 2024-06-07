@@ -14,7 +14,7 @@ export const getAllAssets = async () => {
 export const getAsset = async ({
   queryKey: [{ assetId }],
 }: TypedQueryFunctionContext<AssetsQueryKeys, "detail">) => {
-  const { data } = await axiosClient.get<Asset>(`${assetsPath}/${assetId}`);
+  const { data } = await axiosClient.get<[Asset]>(`${assetsPath}/${assetId}`);
 
   return data;
 };

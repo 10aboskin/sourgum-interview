@@ -1,13 +1,14 @@
+import { ExchangeRates } from "./exchange-rates.types";
 import { Link } from "react-router-dom";
-import { UsdExchangeRatesResponse } from "./exchange-rates.types";
 import { useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 
 interface Props {
-  rates: UsdExchangeRatesResponse["rates"];
+  rates: ExchangeRates["rates"];
+  baseAsset: string;
 }
 
-export const ExchangeRateList = ({ rates }: Props) => {
+export const ExchangeRateList = ({ rates, baseAsset }: Props) => {
   const parentRef = useRef<HTMLDivElement>(null);
   const virtualizer = useVirtualizer({
     count: rates.length,
@@ -20,27 +21,17 @@ export const ExchangeRateList = ({ rates }: Props) => {
   return (
     <div
       ref={parentRef}
-      className="List"
-      style={{
-        height: 400,
-        width: 400,
-        overflowY: "auto",
-        contain: "strict",
-      }}
+      className="h-[calc(100vh-4rem)] overflow-y-auto contain-strict"
     >
       <div
+        className="relative w-full"
         style={{
           height: virtualizer.getTotalSize(),
-          width: "100%",
-          position: "relative",
         }}
       >
         <ul
+          className="absolute left-0 top-0 flex w-full flex-col gap-2"
           style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: "100%",
             transform: `translateY(${items[0]?.start ?? 0}px)`,
           }}
         >
@@ -48,17 +39,20 @@ export const ExchangeRateList = ({ rates }: Props) => {
             const { asset_id_quote, rate } = rates[index];
             return (
               <li
+                ref={virtualizer.measureElement}
                 key={key}
                 data-index={index}
-                ref={virtualizer.measureElement}
-                className={index % 2 ? "ListItemOdd" : "ListItemEven"}
+                className="rounded border border-slate-500 px-8 py-4"
               >
-                <div style={{ padding: "10px 0" }}>
-                  <Link to={`/${asset_id_quote}`}>
-                    <div id="asset-id">{asset_id_quote}</div>
-                    <div id="asset-rate">{rate}</div>
-                  </Link>
-                </div>
+                <Link to={`/${asset_id_quote}`} className="flex">
+                  <div className="w-1/3 text-xl font-bold">
+                    {asset_id_quote}
+                  </div>
+                  <div className="w-2/3">
+                    <span className="text-lg text-slate-500">~</span>{" "}
+                    {rate.toPrecision(5)} {baseAsset}
+                  </div>
+                </Link>
               </li>
             );
           })}
