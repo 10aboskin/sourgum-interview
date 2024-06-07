@@ -1,14 +1,16 @@
+import { ExchangeRateQueryKeys } from "./exchange-rates.query-keys";
+import { TypedQueryFunctionContext } from "../../lib/type-helpers";
 import { UsdExchangeRatesResponse } from "./exchange-rates.types";
 import axiosClient from "../../axios-client";
-import exchangeRates from "../../../tests/exchange-rates.json";
 
-export const exchangeRatesPath = "/exchangerate/USD";
+export const exchangeRatesPath = "/exchangerate";
 
-export const getUsdExchangeRates = async () => {
-  // const { data } = await axiosClient.get<UsdExchangeRatesResponse>(
-  //   exchangeRatesPath
-  // );
-  const data = exchangeRates;
+export const getExchangeRates = async ({
+  queryKey: [{ baseAssetId }],
+}: TypedQueryFunctionContext<ExchangeRateQueryKeys, "list">) => {
+  const { data } = await axiosClient.get<UsdExchangeRatesResponse>(
+    `${exchangeRatesPath}/${baseAssetId}`
+  );
 
   return data;
 };

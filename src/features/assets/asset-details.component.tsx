@@ -7,7 +7,7 @@ interface Props {
 export const AssetDetails = ({ assetId }: Props) => {
   const { data } = useAsset(assetId);
 
-  return <pre role="presentation">{JSON.stringify(data, null, 2)}</pre>;
+  return data && <pre role="presentation">{JSON.stringify(data, null, 2)}</pre>;
 };
 
 export default AssetDetails;

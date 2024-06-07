@@ -5,4 +5,6 @@ const assetsQueryKeys = {
     [{ ...assetsQueryKeys.all()[0], entity: "detail", assetId }] as const,
 };
 
+export type AssetsQueryKeys = typeof assetsQueryKeys;
+
 export default assetsQueryKeys;

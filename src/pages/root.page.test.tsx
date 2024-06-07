@@ -1,72 +1,92 @@
-import {
-  MemoryRouter,
-  RouterProvider,
-  createMemoryRouter,
-} from "react-router-dom";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { RouterProvider, createMemoryRouter } from "react-router-dom";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, render } from "@testing-library/react";
 
 import QueryClientWrapper from "../../tests/query-client-wrapper";
 import Root from "./root.page";
-import exchangeRates from "../../tests/exchange-rates.json";
+import asset1 from "../../tests/asset1.json";
+import { assetsPath } from "../features/assets/assets.api";
+import exchangeRatesBtc from "../../tests/exchange-rates-btc.json";
 import { exchangeRatesPath } from "../features/exchange-rates/exchange-rates.api";
+import exchangeRatesUsd from "../../tests/exchange-rates-usd.json";
+import nock from "nock";
 import nockClient from "../nock-client";
 import { routes } from "../router";
 import userEvent from "@testing-library/user-event";
-
-const assetNames = exchangeRates.rates.map((item) => item.asset_id_quote);
-const assetRates = exchangeRates.rates.map((item) => item.rate);
 
 const router = createMemoryRouter(routes, {
   initialEntries: ["/"],
 });
 
-const setup = async () => {
-  nockClient
-    .options(exchangeRatesPath)
-    .reply(200)
-    .get(exchangeRatesPath)
-    .reply(200, exchangeRates);
-
-  const utils = render(<Root />, {
-    wrapper: () => (
-      <QueryClientWrapper>
-        <RouterProvider router={router} />
-      </QueryClientWrapper>
-    ),
+describe("Root Page", () => {
+  beforeEach(() => {
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(
+      () => ({
+        width: 120,
+        height: 120,
+        top: 0,
+        left: 0,
+        bottom: 0,
+        right: 0,
+        x: 0,
+        y: 0,
+        toJSON: () => {},
+      })
+    );
   });
 
-  return utils;
-};
-
-describe("Root", () => {
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
+    nock.cleanAll();
     cleanup();
   });
 
   it("fetches and displays asset exchange rates with USD", async () => {
-    const { findAllByRole } = await setup();
+    nockClient
+      .options(`${exchangeRatesPath}/USD`)
+      .reply(200)
+      .get(`${exchangeRatesPath}/USD`)
+      .reply(200, exchangeRatesUsd);
+
+    const { findAllByRole } = render(<Root />, {
+      wrapper: () => (
+        <QueryClientWrapper>
+          <RouterProvider router={router} />
+        </QueryClientWrapper>
+      ),
+    });
 
     const listItems = await findAllByRole("link");
-
-    expect(listItems.length).toEqual(exchangeRates.rates.length);
+    // expect to only see visible virtual rows
+    expect(listItems.length).toEqual(2);
 
     const listItemNames = listItems.map((item) => item.firstChild?.textContent);
-    expect(listItemNames).toEqual(assetNames);
+    expect(listItemNames).toEqual(["00", "1000SATS"]);
 
     const listItemPrices = listItems.map((item) =>
       item.lastChild?.textContent ? +item.lastChild.textContent : item.lastChild
     );
-    expect(listItemPrices).toEqual(assetRates);
+    expect(listItemPrices).toEqual([13.31439053707501, 3072.441676916485]);
   });
 
   it("filters the list based on the search input", async () => {
     const user = userEvent.setup();
 
-    const { findAllByRole, findByRole } = await setup();
+    nockClient
+      .options(`${exchangeRatesPath}/USD`)
+      .reply(200)
+      .get(`${exchangeRatesPath}/USD`)
+      .reply(200, exchangeRatesUsd);
 
-    const searchInput = await findByRole("textbox");
+    const { findAllByRole, findByRole } = render(<Root />, {
+      wrapper: () => (
+        <QueryClientWrapper>
+          <RouterProvider router={router} />
+        </QueryClientWrapper>
+      ),
+    });
+
+    const searchInput = await findByRole("combobox", { name: "search-input" });
 
     const testListItems = async ({
       names,
@@ -76,6 +96,7 @@ describe("Root", () => {
       rates: number[];
     }) => {
       const listItems = await findAllByRole("link");
+
       const listItemNames = listItems.map(
         (item) => item.firstChild?.textContent
       );
@@ -89,18 +110,20 @@ describe("Root", () => {
       expect(listItemPrices).toEqual(rates);
     };
 
-    // expect to see all items
-    testListItems({ names: assetNames, rates: assetRates });
-    // expect(listItems.length).toEqual(exchangeRates.rates.length);
-
-    // change search value
-    await user.click(searchInput);
-    await user.keyboard("00");
-    // expect to see correct filtered values
-
+    // expect to see only visible virtualized rows
     testListItems({
       names: ["00", "1000SATS"],
       rates: [13.31439053707501, 3072.441676916485],
+    });
+
+    // change search value
+    await user.click(searchInput);
+    await user.keyboard("1EARTH");
+
+    // expect to see matching list values
+    testListItems({
+      names: ["00"],
+      rates: [13.31439053707501],
     });
 
     // change search
@@ -108,19 +131,39 @@ describe("Root", () => {
     await user.keyboard("1");
     // expect to see correct filtered values
     testListItems({
-      names: ["1000SATS", "1EARTH", "1INCH"],
-      rates: [3072.441676916485, 1756.188120859164, 2.078612758834678],
+      names: ["00", "1000SATS"],
+      rates: [13.31439053707501, 3072.441676916485],
     });
 
     //  clear search value
     await user.clear(searchInput);
-    // expect to see all items
-    testListItems({ names: assetNames, rates: assetRates });
+    // expect to see only visible virtualized rows
+    testListItems({
+      names: ["00", "1000SATS"],
+      rates: [13.31439053707501, 3072.441676916485],
+    });
   });
 
   it("displays asset details when a list item is clicked", async () => {
     const user = userEvent.setup();
-    const { findAllByRole, findByRole, queryByRole } = await setup();
+    const { findAllByRole, findByRole, queryByRole } = render(<Root />, {
+      wrapper: () => (
+        <QueryClientWrapper>
+          <RouterProvider router={router} />
+        </QueryClientWrapper>
+      ),
+    });
+
+    nockClient
+      .options(`${exchangeRatesPath}/USD`)
+      .reply(200)
+      .get(`${exchangeRatesPath}/USD`)
+      .reply(200, exchangeRatesUsd)
+      .options(`${assetsPath}/00`)
+      .reply(200)
+      .get(`${assetsPath}/00`)
+      .reply(200, asset1);
+
     // expect details to be hidden by default
     expect(queryByRole("presentation")).toBeNull();
     // click first list item
@@ -130,5 +173,50 @@ describe("Root", () => {
     // expect asset details to be visible
     const pre = await findByRole("presentation");
     expect(pre.textContent).toContain("BTC");
+  });
+
+  it("updates base exchange asset to compare rates", async () => {
+    const user = userEvent.setup();
+    const { findAllByRole, findByRole } = render(<Root />, {
+      wrapper: () => (
+        <QueryClientWrapper>
+          <RouterProvider router={router} />
+        </QueryClientWrapper>
+      ),
+    });
+
+    nockClient
+      .options(`${exchangeRatesPath}/USD`)
+      .reply(200)
+      .get(`${exchangeRatesPath}/USD`)
+      .reply(200, exchangeRatesUsd)
+      .options(`${exchangeRatesPath}/1INCH`)
+      .reply(200)
+      .get(`${exchangeRatesPath}/1INCH`)
+      .reply(200, exchangeRatesBtc);
+
+    let listItems = await findAllByRole("link");
+    const listItemPrices = listItems.map((item) =>
+      item.lastChild?.textContent ? +item.lastChild.textContent : item.lastChild
+    );
+
+    const select = await findByRole("combobox", {
+      name: "base-asset-select",
+    });
+    // expect default select value to be 'USD'
+    const usdOption = (await findByRole("option", {
+      name: "USD",
+    })) as HTMLOptionElement;
+
+    expect(usdOption.selected).toBe(true);
+    // select a different asset
+    await user.selectOptions(select, ["1INCH"]);
+    // expect updated values
+    listItems = await findAllByRole("link");
+    const newPrices = listItems.map((item) =>
+      item.lastChild?.textContent ? +item.lastChild.textContent : item.lastChild
+    );
+
+    expect(newPrices).not.toEqual(listItemPrices);
   });
 });
