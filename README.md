@@ -1,30 +1,27 @@
-# React + TypeScript + Vite
+## About
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+An application that displays current currency/asset exchange rates.
 
-Currently, two official plugins are available:
+### Data Fetching
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Leveraging `react-query`, the application optimizes API requests and caches responses. To prevent exceeding the API rate limit, request retries are disabled and a stale time of `Infinity` is set. Exchange rate data is fetched from the `/exchangerate` endpoint. Virtualization techniques are employed to enhance performance, enabling smooth scrolling and efficient search functionality even with large response sizes.
 
-## Expanding the ESLint configuration
+### Search/Filter
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+- Utilizing Fuse.js, users can conduct a fuzzy search across the exchange rate list, improving accessibility and usability.
 
-- Configure the top-level `parserOptions` property like this:
+### Asset Details
 
-```js
-export default {
-  // other rules...
-  parserOptions: {
-    ecmaVersion: 'latest',
-    sourceType: 'module',
-    project: ['./tsconfig.json', './tsconfig.node.json'],
-    tsconfigRootDir: __dirname,
-  },
-}
-```
+- When a list item is selected, detailed asset information is fetched from the `/assets` endpoint. This information is then presented alongside the exchange rate list.
 
-- Replace `plugin:@typescript-eslint/recommended` to `plugin:@typescript-eslint/recommended-type-checked` or `plugin:@typescript-eslint/strict-type-checked`
-- Optionally add `plugin:@typescript-eslint/stylistic-type-checked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and add `plugin:react/recommended` & `plugin:react/jsx-runtime` to the `extends` list
+### Comparing Assets
+
+- The 'Base Asset' select option allows users to choose a base currency for comparing exchange rates. By selecting a base asset and utilizing the search feature, users can effectively analyze exchange rate differentials.
+
+### Testing
+
+- Due to time constraints, an integration test strategy was favored over unit testing to ensure the application's robustness and reliability.
+
+### Styling
+
+- Tailwind CSS is employed for styling purposes. While styling was given due consideration, time limitations may have impacted the depth of styling enhancements achieved in the project. Future iterations may involve further refinement in this area.
